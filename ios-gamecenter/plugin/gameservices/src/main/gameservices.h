@@ -8,7 +8,13 @@
 #ifndef gameservices_plugin_implementation_h
     #define gameservices_plugin_implementation_h
 
+    #include "core/version.h"
+
+    #if VERSION_MAJOR == 4
+    #include "core/object/class_db.h"
+    #else
     #include "core/object.h"
+    #endif
 
     #import <UIKit/UIKit.h>
     #import <GameKit/GameKit.h>
@@ -24,12 +30,14 @@
 
         GameServicesHelper *gameServicesHelper;
 
-        NSArray<GKLeaderboard *> *all_leaderboards;
+        NSMutableDictionary *all_leaderboards;
         GKLeaderboard *current_leaderboard;
         int current_leaderboard_page_size;
         int current_leaderboard_players;
         int current_leaderboard_time;
         int current_leaderboard_range_start;
+        
+        //List<Variant> pending_events;
 
     protected:
         static void _bind_methods();
@@ -51,6 +59,14 @@
 
         void submit_score(const String &leaderboard_id, int score);
 
+        Error award_achievement(Dictionary p_params);
+        void request_achievement_descriptions();
+        void request_achievements() ;
+        void reset_achievements();
+        
+        //int get_pending_event_count();
+        //Variant pop_pending_event();
+        
         GameServices();
         ~GameServices();
 

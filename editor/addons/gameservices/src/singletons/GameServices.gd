@@ -14,6 +14,7 @@ func get_service_name() -> String:
 
 func initialize() -> void:
 	if _plugin:
+		print("calling _plugin.initialize()")
 		_plugin.initialize()
 
 
@@ -25,6 +26,7 @@ func can_sign_in() -> bool:
 
 func sign_in() -> void:
 	if _plugin:
+		print("calling sign_in()")
 		_plugin.sign_in()
 
 #
@@ -73,3 +75,26 @@ func fetch_next_scores() -> void:
 func submit_score(leaderboard_id: String, score: int) -> void:
 	if _plugin:
 		_plugin.submit_score(_platform_leaderboard_id(leaderboard_id), score)
+
+
+#
+# Achievements
+#
+
+func award_achievement(achievement_name_and_progress: Dictionary) -> Error:
+	if _plugin:
+		return _plugin.award_achievement(achievement_name_and_progress)
+	else:
+		return Error.FAILED
+
+func request_achievement_descriptions() -> void:
+	if _plugin:
+		_plugin.request_achievement_descriptions()
+
+func request_achievements() -> void:
+	if _plugin:
+		_plugin.request_achievements()
+
+func reset_achievements() -> void:
+	if _plugin:
+		_plugin.reset_achievements()

@@ -5,14 +5,13 @@
 #
 
 class_name GSLeaderboard
-extends Reference
 
 var id := ""
 var display_name := ""
 
 func _init(info: Dictionary):
-    self.id = info.get("id", "")
-    self.display_name = info.get("display_name", "")
+	self.id = info.get("id", "")
+	self.display_name = info.get("display_name", "")
 
 func _to_string() -> String:
-    return "GSLeaderboard id: %s name: %s" % [self.id, self.display_name]
+	return "GSLeaderboard id: %s name: %s" % [self.id, self.display_name]

@@ -6,7 +6,7 @@
 //
 
 #import "gameservices_module.h"
-#import "core/engine.h"
+#import "core/config/engine.h"
 
 GameServices * gameservices;
 

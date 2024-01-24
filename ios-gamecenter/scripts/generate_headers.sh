@@ -1,3 +1,3 @@
 #!/bin/bash
 cd ./godot && \
-    ./../scripts/timeout scons platform=iphone target=release_debug
+    ./../scripts/timeout scons platform=ios target=template_debug

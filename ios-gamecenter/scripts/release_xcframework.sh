@@ -1,6 +1,6 @@
 #!/bin/bash
 
-GODOT_PLUGINS="admob"
+GODOT_PLUGINS="gameservices"
 
 # Compile Plugin
 for lib in $GODOT_PLUGINS; do

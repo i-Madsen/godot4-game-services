@@ -5,11 +5,22 @@
 //  Created by Gustavo Maciel on 16/01/21.
 //
 
-#include "core/project_settings.h"
-#include "core/class_db.h"
+#include "core/config/project_settings.h"
+#include "core/object/class_db.h"
 
 #include "gameservices.h"
 #import "GameServicesHelper.h"
+
+
+#if VERSION_MAJOR == 4
+typedef PackedStringArray GodotStringArray;
+typedef PackedInt32Array GodotIntArray;
+typedef PackedFloat32Array GodotFloatArray;
+#else
+typedef PoolStringArray GodotStringArray;
+typedef PoolIntArray GodotIntArray;
+typedef PoolRealArray GodotFloatArray;
+#endif
 
 GameServices *GameServices::instance = NULL;
 
@@ -17,7 +28,7 @@ GameServices::GameServices() {
 
     initialized = false;
     
-    all_leaderboards = nil;
+    all_leaderboards = [[NSMutableDictionary alloc] init];
     current_leaderboard = nil;
     current_leaderboard_page_size = 0;
     current_leaderboard_players = 0;
@@ -158,7 +169,7 @@ void GameServices::fetch_leaderboard(const String &leaderboard_id, const String 
     NSString *errorSignal = [NSString stringWithCString:error_signal.utf8().get_data() encoding:NSUTF8StringEncoding];
     
     // Have we already fetched the leaderboards?
-    if (all_leaderboards != nil) {
+    /*if (all_leaderboards != nil) {
         GKLeaderboard *theLeaderboard = nil;
         for (GKLeaderboard *leaderboard in all_leaderboards) {
             if ([leaderboard.baseLeaderboardID isEqualToString:leaderboardID]) {
@@ -175,9 +186,11 @@ void GameServices::fetch_leaderboard(const String &leaderboard_id, const String 
         }
         
         return;
-    }
+    }*/
     
-    [GKLeaderboard loadLeaderboardsWithCompletionHandler:^(NSArray *leaderboards, NSError *error) {
+    NSArray<NSString *> *leaderboardIDs =  [NSArray arrayWithObject:leaderboardID];
+    
+    [GKLeaderboard loadLeaderboardsWithIDs:leaderboardIDs completionHandler:^(NSArray *leaderboards, NSError *error) {
         
         if (error) {
             emit_signal(errorSignal.UTF8String, leaderboardID.UTF8String, error.localizedDescription.UTF8String);
@@ -191,7 +204,7 @@ void GameServices::fetch_leaderboard(const String &leaderboard_id, const String 
             return;
         }
         
-        all_leaderboards = leaderboards;
+        
         
         GKLeaderboard *theLeaderboard = nil;
         
@@ -207,6 +220,8 @@ void GameServices::fetch_leaderboard(const String &leaderboard_id, const String 
             emit_signal(errorSignal.UTF8String, leaderboardID.UTF8String, "leaderboard not found");
             return;
         }
+        
+        [all_leaderboards setValue:theLeaderboard forKey:leaderboardID];
         
         completion(theLeaderboard);
     }];
@@ -249,6 +264,139 @@ void GameServices::fetch_scores() {
     }];
 }
 
+
+// #####################################################################################################################################
+// TODO: Instead of doing the pending_events.pushback in completion handlers, we should make signals like the other methods
+//#####################################################################################################################################
+Error GameServices::award_achievement(Dictionary p_params) {
+    ERR_FAIL_COND_V(!p_params.has("name") || !p_params.has("progress"), ERR_INVALID_PARAMETER);
+    String name = p_params["name"];
+    float progress = p_params["progress"];
+
+    NSString *name_str = [[NSString alloc] initWithUTF8String:name.utf8().get_data()];
+    GKAchievement *achievement = [[GKAchievement alloc] initWithIdentifier:name_str];
+    ERR_FAIL_COND_V(!achievement, FAILED);
+
+    ERR_FAIL_COND_V([GKAchievement respondsToSelector:@selector(reportAchievements)], ERR_UNAVAILABLE);
+
+    achievement.percentComplete = progress;
+    achievement.showsCompletionBanner = NO;
+    if (p_params.has("show_completion_banner")) {
+        achievement.showsCompletionBanner = p_params["show_completion_banner"] ? YES : NO;
+    }
+
+    [GKAchievement reportAchievements:@[ achievement ]
+                withCompletionHandler:^(NSError *error) {
+                    Dictionary ret;
+                    if (error == nil) {
+                        ret["result"] = "ok";
+                    } else {
+                        ret["result"] = "error";
+                        ret["error_code"] = (int64_t)error.code;
+                    };
+
+                    emit_signal("award_achievement_complete", ret);
+                }];
+
+    return OK;
+};
+
+void GameServices::request_achievement_descriptions() {
+    [GKAchievementDescription loadAchievementDescriptionsWithCompletionHandler:^(NSArray *descriptions, NSError *error) {
+        Dictionary ret;
+        if (error == nil) {
+            ret["result"] = "ok";
+            GodotStringArray names;
+            GodotStringArray titles;
+            GodotStringArray unachieved_descriptions;
+            GodotStringArray achieved_descriptions;
+            GodotIntArray maximum_points;
+            Array hidden;
+            Array replayable;
+
+            for (NSUInteger i = 0; i < [descriptions count]; i++) {
+
+                GKAchievementDescription *description = [descriptions objectAtIndex:i];
+
+                const char *str = [description.identifier UTF8String];
+                names.push_back(String::utf8(str != NULL ? str : ""));
+
+                str = [description.title UTF8String];
+                titles.push_back(String::utf8(str != NULL ? str : ""));
+
+                str = [description.unachievedDescription UTF8String];
+                unachieved_descriptions.push_back(String::utf8(str != NULL ? str : ""));
+
+                str = [description.achievedDescription UTF8String];
+                achieved_descriptions.push_back(String::utf8(str != NULL ? str : ""));
+
+                maximum_points.push_back(description.maximumPoints);
+
+                hidden.push_back(description.hidden == YES);
+
+                replayable.push_back(description.replayable == YES);
+            }
+
+            ret["names"] = names;
+            ret["titles"] = titles;
+            ret["unachieved_descriptions"] = unachieved_descriptions;
+            ret["achieved_descriptions"] = achieved_descriptions;
+            ret["maximum_points"] = maximum_points;
+            ret["hidden"] = hidden;
+            ret["replayable"] = replayable;
+
+        } else {
+            ret["result"] = "error";
+            ret["error_code"] = (int64_t)error.code;
+        };
+
+        emit_signal("request_achievement_descriptions_complete", ret);
+    }];
+};
+
+void GameServices::request_achievements() {
+    [GKAchievement loadAchievementsWithCompletionHandler:^(NSArray *achievements, NSError *error) {
+        Dictionary ret;
+        if (error == nil) {
+            ret["result"] = "ok";
+            GodotStringArray names;
+            GodotFloatArray percentages;
+
+            for (NSUInteger i = 0; i < [achievements count]; i++) {
+
+                GKAchievement *achievement = [achievements objectAtIndex:i];
+                const char *str = [achievement.identifier UTF8String];
+                names.push_back(String::utf8(str != NULL ? str : ""));
+
+                percentages.push_back(achievement.percentComplete);
+            }
+
+            ret["names"] = names;
+            ret["progress"] = percentages;
+
+        } else {
+            ret["result"] = "error";
+            ret["error_code"] = (int64_t)error.code;
+        };
+
+        emit_signal("request_achievements_complete", ret);
+    }];
+};
+
+void GameServices::reset_achievements() {
+    [GKAchievement resetAchievementsWithCompletionHandler:^(NSError *error) {
+        Dictionary ret;
+        if (error == nil) {
+            ret["result"] = "ok";
+        } else {
+            ret["result"] = "error";
+            ret["error_code"] = (int64_t)error.code;
+        };
+
+        emit_signal("reset_achievements_complete", ret);
+    }];
+};
+ 
 Dictionary GameServices::dict_from_player(GKPlayer *player) {
     Dictionary dict = Dictionary();
     dict["display_name"] = player.displayName.UTF8String;
@@ -256,8 +404,8 @@ Dictionary GameServices::dict_from_player(GKPlayer *player) {
         dict["id"] = player.gamePlayerID.UTF8String;
         dict["is_local_player"] = [player.gamePlayerID isEqualToString: GKLocalPlayer.local.gamePlayerID];
     } else {
-        dict["id"] = player.playerID.UTF8String;
-        dict["is_local_player"] = [player.playerID isEqualToString: GKLocalPlayer.local.playerID];
+        dict["id"] = player.gamePlayerID.UTF8String;
+        dict["is_local_player"] = [player.gamePlayerID isEqualToString: GKLocalPlayer.local.gamePlayerID];
     }
     return dict;
 }
@@ -304,7 +452,7 @@ GKLeaderboardTimeScope GameServices::time_scope_from_int(int time) {
 }
 
 void GameServices::_bind_methods() {
-
+    
     // Methods
     
     ClassDB::bind_method("get_service_name", &GameServices::get_service_name);
@@ -316,32 +464,50 @@ void GameServices::_bind_methods() {
     
     ClassDB::bind_method("show_leaderboard", &GameServices::show_leaderboard);
     ClassDB::bind_method("show_all_leaderboards", &GameServices::show_all_leaderboards);
-
+    
     ClassDB::bind_method("fetch_top_scores", &GameServices::fetch_top_scores);
     ClassDB::bind_method("fetch_next_scores", &GameServices::fetch_next_scores);
     
     ClassDB::bind_method("submit_score", &GameServices::submit_score);
-
+    
+    ClassDB::bind_method(D_METHOD("award_achievement", "achievement"), &GameServices::award_achievement);
+    ClassDB::bind_method("reset_achievements", &GameServices::reset_achievements);
+    ClassDB::bind_method("request_achievements", &GameServices::request_achievements);
+    ClassDB::bind_method("request_achievement_descriptions", &GameServices::request_achievement_descriptions);
+    
     // Signals
     
     ADD_SIGNAL(MethodInfo("debug_message", PropertyInfo(Variant::STRING, "message")));
-
+    
     // initialize()
     // sign_in()
     ADD_SIGNAL(MethodInfo("authorization_complete", PropertyInfo(Variant::BOOL, "signed_in"), PropertyInfo(Variant::DICTIONARY, "player_info")));
     ADD_SIGNAL(MethodInfo("authorization_failed", PropertyInfo(Variant::STRING, "error_message")));
-
+    
     // show_leaderboard()
     // show_all_leaderboards()
     ADD_SIGNAL(MethodInfo("show_leaderboard_complete", PropertyInfo(Variant::STRING, "leaderboard_id")));
     ADD_SIGNAL(MethodInfo("show_leaderboard_failed", PropertyInfo(Variant::STRING, "leaderboard_id"), PropertyInfo(Variant::STRING, "error_message")));
     ADD_SIGNAL(MethodInfo("show_leaderboard_dismissed", PropertyInfo(Variant::STRING, "leaderboard_id")));
-
+    
     // fetch_?_scores()
     ADD_SIGNAL(MethodInfo("fetch_scores_complete", PropertyInfo(Variant::DICTIONARY, "leaderboard_info"), PropertyInfo(Variant::DICTIONARY, "player_score"), PropertyInfo(Variant::DICTIONARY, "scores"), PropertyInfo(Variant::BOOL, "more_available")));
     ADD_SIGNAL(MethodInfo("fetch_scores_failed", PropertyInfo(Variant::STRING, "leaderboard_id"), PropertyInfo(Variant::STRING, "error_message")));
-
+    
     // submit_score()
     ADD_SIGNAL(MethodInfo("submit_score_complete", PropertyInfo(Variant::STRING, "leaderboard_id")));
     ADD_SIGNAL(MethodInfo("submit_score_failed", PropertyInfo(Variant::STRING, "leaderboard_id"), PropertyInfo(Variant::STRING, "error_message")));
+    
+    
+    // award_achievement()
+    ADD_SIGNAL(MethodInfo("award_achievement_complete", PropertyInfo(Variant::DICTIONARY, "ret")));
+
+    // request_achievement_descriptions()
+    ADD_SIGNAL(MethodInfo("request_achievement_descriptions_complete", PropertyInfo(Variant::DICTIONARY, "ret")));
+    
+    // request_achievements()
+    ADD_SIGNAL(MethodInfo("request_achievements_complete", PropertyInfo(Variant::DICTIONARY, "ret")));
+    
+    // reset_achievements()
+    ADD_SIGNAL(MethodInfo("reset_achievements_complete", PropertyInfo(Variant::DICTIONARY, "ret")));
 }

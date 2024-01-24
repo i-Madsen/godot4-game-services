@@ -3,7 +3,7 @@
 # sjc - 16/1/23
 #
 
-tool
+@tool
 extends EditorPlugin
 
 const GameServicesTab = preload("res://addons/gameservices/src/ui/GameServicesTab.tscn")
@@ -15,8 +15,8 @@ func _enter_tree():
 	add_autoload_singleton("GameServices", "res://addons/gameservices/src/singletons/GameServices.gd")
 
 	# Setup the configuration tab shown in the editor
-	tab_instance = GameServicesTab.instance()
-	get_editor_interface().get_editor_viewport().add_child(tab_instance)
+	tab_instance = GameServicesTab.instantiate()
+	EditorInterface.get_editor_viewport_2d().add_child(tab_instance)
 	make_visible(false)
 
 

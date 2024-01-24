@@ -4,7 +4,7 @@
 # The in-editor UI for configuring GameServices
 #
 
-tool
+@tool
 extends Control
 
 var Config = preload("res://addons/gameservices/src/utils/GameServicesConfig.gd").new()
@@ -69,14 +69,14 @@ func add_row(name: String = "", android: String = "", ios: String = ""):
 	$Margin/GridContainer.add_child(button)
 	
 	var row = ($Margin/GridContainer.get_child_count() - 3) / 4
-	button.connect("pressed", self, "_on_DeleteButton_pressed", [ row ])
+	button.pressed.connect(_on_DeleteButton_pressed.bind(row))
 
 
 func add_textfield(text: String):
 	var textfield = LineEdit.new()
 	textfield.text = text
-	textfield.connect("text_changed", self, "_on_LineEdit_text_changed")
-	textfield.connect("text_entered", self, "_on_LineEdit_text_entered")
+	textfield.text_changed.connect(_on_LineEdit_text_changed)
+	textfield.text_submitted.connect(_on_LineEdit_text_entered)
 	$Margin/GridContainer.add_child(textfield)
 
 
@@ -94,8 +94,8 @@ func delete_row(row: int):
 		# the button will be the last item in each row
 		for i in range(index+3, count, 4):
 			var button = $Margin/GridContainer.get_child(i)
-			button.disconnect("pressed", self, "_on_DeleteButton_pressed")
-			button.connect("pressed", self, "_on_DeleteButton_pressed", [ row ])
+			button.pressed.disconnect(_on_DeleteButton_pressed)
+			button.pressed.connect(_on_DeleteButton_pressed.bind(row))
 			row += 1
 
 #

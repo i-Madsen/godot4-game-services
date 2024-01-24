@@ -31,12 +31,16 @@ signal fetch_scores_failed(leaderboard_id, error_message)
 signal submit_score_complete(leaderboard_id)
 signal submit_score_failed(leaderboard_id, error_message)
 
+signal award_achievement_complete(ret)
+signal request_achievement_descriptions_complete(ret)
+signal request_achievements_complete(ret)
+signal reset_achievements_complete(ret)
 #
 # vars
 #
 
 var GameServicesConfig = preload("res://addons/gameservices/src/utils/GameServicesConfig.gd").new()
-onready var leaderboard_ids = GameServicesConfig.leaderboard_ids_for_platform(OS.get_name())
+@onready var leaderboard_ids = GameServicesConfig.leaderboard_ids_for_platform(OS.get_name())
 
 var _plugin : Object
 
@@ -53,20 +57,25 @@ func _ready() -> void:
 
 func _connect_signals() -> void:
 
-	_plugin.connect("debug_message", self, "_on_GameServices_debug_message")
+	_plugin.debug_message.connect(_on_GameServices_debug_message)
 
-	_plugin.connect("authorization_complete", self, "_on_GameServices_authorization_complete")
-	_plugin.connect("authorization_failed", self, "_on_GameServices_authorization_failed")
+	_plugin.authorization_complete.connect(_on_GameServices_authorization_complete)
+	_plugin.authorization_failed.connect(_on_GameServices_authorization_failed)
 
-	_plugin.connect("show_leaderboard_complete", self, "_on_GameServices_show_leaderboard_complete")
-	_plugin.connect("show_leaderboard_failed", self, "_on_GameServices_show_leaderboard_failed")
-	_plugin.connect("show_leaderboard_dismissed", self, "_on_GameServices_show_leaderboard_dismissed")
+	_plugin.show_leaderboard_complete.connect(_on_GameServices_show_leaderboard_complete)
+	_plugin.show_leaderboard_failed.connect(_on_GameServices_show_leaderboard_failed)
+	_plugin.show_leaderboard_dismissed.connect(_on_GameServices_show_leaderboard_dismissed)
 
-	_plugin.connect("fetch_scores_complete", self, "_on_GameServices_fetch_scores_complete")
-	_plugin.connect("fetch_scores_failed", self, "_on_GameServices_fetch_scores_failed")
+	_plugin.fetch_scores_complete.connect(_on_GameServices_fetch_scores_complete)
+	_plugin.fetch_scores_failed.connect(_on_GameServices_fetch_scores_failed)
 
-	_plugin.connect("submit_score_complete", self, "_on_GameServices_submit_score_complete")
-	_plugin.connect("submit_score_failed", self, "_on_GameServices_submit_score_failed")
+	_plugin.submit_score_complete.connect(_on_GameServices_submit_score_complete)
+	_plugin.submit_score_failed.connect(_on_GameServices_submit_score_failed)
+
+	_plugin.award_achievement_complete.connect(_on_GameServices_award_achievement_complete)
+	_plugin.request_achievement_descriptions_complete.connect(_on_GameServices_request_achievement_descriptions_complete)
+	_plugin.request_achievements_complete.connect(_on_GameServices_request_achievements_complete)
+	_plugin.reset_achievements_complete.connect(_on_GameServices_reset_achievements_complete)
 
 #
 # Signal callbacks
@@ -85,7 +94,7 @@ func _on_GameServices_debug_message(message: String) -> void:
 
 func _on_GameServices_authorization_complete(authorized: bool, player_dict: Dictionary) -> void:
 	self.is_authorized = authorized
-	var player = GSPlayer.new(player_dict) if not player_dict.empty() else null
+	var player = GSPlayer.new(player_dict) if not player_dict.is_empty() else null
 	emit_signal("authorization_complete", authorized, player)
 
 func _on_GameServices_authorization_failed(error_message: String) -> void:
@@ -137,7 +146,7 @@ func _on_GameServices_fetch_scores_complete(leaderboard_dict, player_score_dict,
 	# we can't return arrays from plugins, so the result is a dictionary with index as key
 	var scores = []
 	for i in range(scores_dict.size()):
-		var key = String(i)
+		var key = str(i)
 		var score_dict = scores_dict.get(key, {})
 		if not score_dict.empty():
 			scores.append(GSScore.new(score_dict))
@@ -157,3 +166,18 @@ func _on_GameServices_submit_score_complete(leaderboard_id: String) -> void:
 func _on_GameServices_submit_score_failed(leaderboard_id: String, error_message: String) -> void:
 	emit_signal("submit_score_failed", _shared_leaderboard_id(leaderboard_id), error_message)
 
+#
+# Achievements
+#
+
+func _on_GameServices_award_achievement_complete(ret: Dictionary) -> void:
+	emit_signal("award_achievement_complete", ret)
+	
+func _on_GameServices_request_achievement_descriptions_complete(ret: Dictionary) -> void:
+	emit_signal("request_achievement_descriptions_complete", ret)
+
+func _on_GameServices_request_achievements_complete(ret: Dictionary) -> void:
+	emit_signal("request_achievements_complete", ret)
+
+func _on_GameServices_reset_achievements_complete(ret: Dictionary) -> void:
+	emit_signal("reset_achievements_complete", ret)
