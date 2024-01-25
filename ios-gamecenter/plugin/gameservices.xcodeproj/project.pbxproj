@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6AADE8ED2B62F73E00214492 /* GameServicesHelper.mm in Sources */ = {isa = PBXBuildFile; fileRef = 6AADE8EC2B62F73E00214492 /* GameServicesHelper.mm */; };
 		F81CF918296F000A000A6C27 /* gameservices.mm in Sources */ = {isa = PBXBuildFile; fileRef = F81CF916296F000A000A6C27 /* gameservices.mm */; };
 		F81CF91B296F0010000A6C27 /* gameservices_module.mm in Sources */ = {isa = PBXBuildFile; fileRef = F81CF919296F0010000A6C27 /* gameservices_module.mm */; };
-		F8CC15F62993DB8200590D71 /* GameServicesHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F8CC15F52993DB8200590D71 /* GameServicesHelper.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -27,12 +27,12 @@
 
 /* Begin PBXFileReference section */
 		5EDA216925B398A50076123B /* libgameservices.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libgameservices.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		6AADE8EC2B62F73E00214492 /* GameServicesHelper.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = GameServicesHelper.mm; path = gameservices/src/main/GameServicesHelper.mm; sourceTree = "<group>"; };
 		F81CF916296F000A000A6C27 /* gameservices.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = gameservices.mm; path = gameservices/src/main/gameservices.mm; sourceTree = "<group>"; };
 		F81CF917296F000A000A6C27 /* gameservices.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gameservices.h; path = gameservices/src/main/gameservices.h; sourceTree = "<group>"; };
 		F81CF919296F0010000A6C27 /* gameservices_module.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = gameservices_module.mm; path = gameservices/src/module/gameservices_module.mm; sourceTree = "<group>"; };
 		F81CF91A296F0010000A6C27 /* gameservices_module.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gameservices_module.h; path = gameservices/src/module/gameservices_module.h; sourceTree = "<group>"; };
 		F8CC15F42993DB8200590D71 /* GameServicesHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = GameServicesHelper.h; path = gameservices/src/main/GameServicesHelper.h; sourceTree = "<group>"; };
-		F8CC15F52993DB8200590D71 /* GameServicesHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = GameServicesHelper.m; path = gameservices/src/main/GameServicesHelper.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,7 +52,7 @@
 				F81CF917296F000A000A6C27 /* gameservices.h */,
 				F81CF916296F000A000A6C27 /* gameservices.mm */,
 				F8CC15F42993DB8200590D71 /* GameServicesHelper.h */,
-				F8CC15F52993DB8200590D71 /* GameServicesHelper.m */,
+				6AADE8EC2B62F73E00214492 /* GameServicesHelper.mm */,
 				F81CF91A296F0010000A6C27 /* gameservices_module.h */,
 				F81CF919296F0010000A6C27 /* gameservices_module.mm */,
 				5EDA216A25B398A50076123B /* Products */,
@@ -125,7 +125,7 @@
 			files = (
 				F81CF918296F000A000A6C27 /* gameservices.mm in Sources */,
 				F81CF91B296F0010000A6C27 /* gameservices_module.mm in Sources */,
-				F8CC15F62993DB8200590D71 /* GameServicesHelper.m in Sources */,
+				6AADE8ED2B62F73E00214492 /* GameServicesHelper.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
