@@ -16,7 +16,5 @@ files=[]
 
 linker_flags=["-ObjC"]
 
-;[plist]
-;Warning: You will need to update the [plist] section every time you reinstall/upgrade the plugin!
-;OPTIONAL: Won't be required until we implement Friends Lists
-;NSGKFriendListUsageDescription="Allow us to connect you to your Game Center friends."
+[plist]
+NSGKFriendListUsageDescription="Allow us to show a leaderboard of your Game Center friends!"

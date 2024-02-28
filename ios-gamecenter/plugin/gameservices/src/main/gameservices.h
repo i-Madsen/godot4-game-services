@@ -12,8 +12,10 @@
 
     #if VERSION_MAJOR == 4
     #include "core/object/class_db.h"
+    #include "core/io/image.h"
     #else
     #include "core/object.h"
+    #include "core/image.h"
     #endif
 
     #import <UIKit/UIKit.h>
@@ -36,6 +38,8 @@
         int current_leaderboard_players;
         int current_leaderboard_time;
         int current_leaderboard_range_start;
+        
+        NSMutableDictionary *all_friends;
         
         //List<Variant> pending_events;
 
@@ -67,6 +71,11 @@
         //int get_pending_event_count();
         //Variant pop_pending_event();
         
+        void get_friends_authorization_status();
+        void load_friends();
+        void fetch_friend_avatar(const String &player_id);
+
+        
         GameServices();
         ~GameServices();
 
@@ -77,6 +86,8 @@
         void fetch_leaderboard(const String &leaderboard_id, const String &error_signal, void (^completion)(GKLeaderboard * leaderboard));
         void fetch_scores();
 
+        CGImageRef newRGBA8CGImageFromUIImage(UIImage* image);
+        
         Dictionary dict_from_player(GKPlayer *player);
         Dictionary dict_from_leaderboard(GKLeaderboard *leaderboard);
         Dictionary dict_from_score(GKLeaderboardEntry *score, bool for_local_player);

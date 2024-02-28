@@ -35,6 +35,8 @@ GameServices::GameServices() {
     current_leaderboard_time = 0;
     current_leaderboard_range_start = 0;
     
+    all_friends = [[NSMutableDictionary alloc] init];
+    
     ERR_FAIL_COND(instance != NULL);
     
     instance = this;
@@ -266,8 +268,8 @@ void GameServices::fetch_scores() {
 
 
 // #####################################################################################################################################
-// TODO: Instead of doing the pending_events.pushback in completion handlers, we should make signals like the other methods
-//#####################################################################################################################################
+// Achievements
+// #####################################################################################################################################
 Error GameServices::award_achievement(Dictionary p_params) {
     ERR_FAIL_COND_V(!p_params.has("name") || !p_params.has("progress"), ERR_INVALID_PARAMETER);
     String name = p_params["name"];
@@ -396,17 +398,220 @@ void GameServices::reset_achievements() {
         emit_signal("reset_achievements_complete", ret);
     }];
 };
- 
+
+
+
+// #####################################################################################################################################
+// Friends
+// #####################################################################################################################################
+void GameServices::get_friends_authorization_status() {
+    [GKLocalPlayer.local loadFriendsAuthorizationStatus:^(GKFriendsAuthorizationStatus authorizationStatus, NSError *error) {
+        if (error == nil) {
+            // notDetermined = 0, restricted = 1, denied = 2, authorized = 3
+            emit_signal("get_friends_authorization_status_complete", authorizationStatus);
+        } else {
+            emit_signal("get_friends_authorization_status_failed", error.localizedDescription.UTF8String);
+        };
+    }];
+}
+
+void GameServices::load_friends() {
+    [GKLocalPlayer.local loadFriends:^(NSArray *friends, NSError *error) {
+        if (error == nil) {
+            Dictionary friend_dict = Dictionary();
+            
+            for (NSUInteger i = 0; i < friends.count; i++) {
+                [all_friends setValue:friends[i] forKey:[friends[i] gamePlayerID]];
+                friend_dict[@(i).stringValue.UTF8String] = dict_from_player(friends[i]);
+            }
+            emit_signal("load_friends_complete", friend_dict);
+            
+        } else {
+            emit_signal("load_friends_failed", error.localizedDescription.UTF8String);
+        };
+    }];
+}
+
+void GameServices::fetch_friend_avatar(const String &player_id) {
+    NSString *playerID = [NSString stringWithCString:player_id.utf8().get_data() encoding:NSUTF8StringEncoding];
+    GKPlayer* player;
+    
+    if ([playerID isEqualToString: GKLocalPlayer.local.gamePlayerID]) {
+        player = GKLocalPlayer.local;
+        NSLog(@"Fetching local player avatar...");
+    }
+    else {
+        if (all_friends[playerID])
+        {
+            player = all_friends[playerID];
+            NSLog(@"Fetching friend avatar...");
+        }
+        else
+        {
+            NSLog(@"Did not find friend id.");
+            emit_signal("fetch_friend_avatar_failed", "Did not find friend with id: " + player_id);
+            return;
+        }
+    }
+    
+    // Get player's avatar photo
+    [player loadPhotoForSize:(GKPhotoSizeNormal) withCompletionHandler:^(UIImage * _Nullable photo, NSError * _Nullable error) {
+        if (photo) {
+            NSLog(@"Got photo...");
+            CGImageRef cgImage = newRGBA8CGImageFromUIImage(photo);
+            
+            if (cgImage) {
+                NSLog(@"Converted to CGImageRef...");
+                CGDataProviderRef provider = CGImageGetDataProvider(cgImage);
+                CFDataRef bmp = CGDataProviderCopyData(provider);
+                const unsigned char *data = CFDataGetBytePtr(bmp);
+                CFIndex length = CFDataGetLength(bmp);
+                
+                if (data) {
+                    NSLog(@"Converted into data...");
+                    Ref<Image> img;
+                #if VERSION_MAJOR == 4
+                    Vector<uint8_t> img_data;
+                    img_data.resize(length);
+                    uint8_t* w = img_data.ptrw();
+                    memcpy(w, data, length);
+                    
+                    img.instantiate();
+                    img->set_data(photo.size.width * photo.scale, photo.size.height * photo.scale, 0, Image::FORMAT_RGBA8, img_data);
+                #else
+                    PoolVector<uint8_t> img_data;
+                    img_data.resize(length);
+                    PoolVector<uint8_t>::Write w = img_data.write();
+                    memcpy(w.ptr(), data, length);
+                    
+                    img.instance();
+                    img->create(image.size.width * image.scale, image.size.height * image.scale, 0, Image::FORMAT_RGBA8, img_data);
+                #endif
+                    NSLog(@"Emitting fetch_friend_avatar_complete...");
+                    // Sending back the player's display name instead of id since the friend ids were not consistent with the ones sent back from leaderboards
+                    // This may vary from app to app, but display name *should* always work here regardless
+                    emit_signal("fetch_friend_avatar_complete", player.displayName.UTF8String, img);
+                }
+                else {
+                    NSLog(@"Conversion into data failed...");
+                }
+                
+                CFRelease(bmp);
+                CGImageRelease(cgImage);
+            }
+            else
+            {
+                NSLog(@"Conversion to CGImageRef was nil...");
+            }
+        } else {
+            NSLog(@"Photo returned nil...");
+            emit_signal("fetch_friend_avatar_failed", error.localizedDescription.UTF8String);
+        }
+    }];
+}
+
+
+// #####################################################################################################################################
+// Private helpers
+// #####################################################################################################################################
+CGImageRef GameServices::newRGBA8CGImageFromUIImage(UIImage* image) {
+    size_t bitsPerPixel = 32;
+    size_t bitsPerComponent = 8;
+    size_t bytesPerPixel = bitsPerPixel / bitsPerComponent;
+
+    size_t width = image.size.width;
+    size_t height = image.size.height;
+    UIImageOrientation orientation = image.imageOrientation;
+
+    size_t bytesPerRow = width * bytesPerPixel;
+
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+
+    if (!colorSpace) {
+        NSLog(@"Error allocating color space RGB");
+        return NULL;
+    }
+
+    CGAffineTransform transform = CGAffineTransformIdentity;
+
+    switch (orientation) {
+        case UIImageOrientationDown:
+        case UIImageOrientationDownMirrored:
+            transform = CGAffineTransformTranslate(transform, width, height);
+            transform = CGAffineTransformRotate(transform, M_PI);
+            break;
+        case UIImageOrientationLeft:
+        case UIImageOrientationLeftMirrored:
+            transform = CGAffineTransformTranslate(transform, width, 0);
+            transform = CGAffineTransformRotate(transform, M_PI_2);
+            break;
+        case UIImageOrientationRight:
+        case UIImageOrientationRightMirrored:
+            transform = CGAffineTransformTranslate(transform, 0, height);
+            transform = CGAffineTransformRotate(transform, -M_PI_2);
+            break;
+        default:
+            break;
+    }
+
+    switch (orientation) {
+        case UIImageOrientationUpMirrored:
+        case UIImageOrientationDownMirrored:
+            transform = CGAffineTransformTranslate(transform, width, 0);
+            transform = CGAffineTransformScale(transform, -1, 1);
+            break;
+        case UIImageOrientationLeftMirrored:
+        case UIImageOrientationRightMirrored:
+            transform = CGAffineTransformTranslate(transform, height, 0);
+            transform = CGAffineTransformScale(transform, -1, 1);
+            break;
+        default:
+            break;
+    }
+
+    CGContextRef context = CGBitmapContextCreate(NULL,
+            width,
+            height,
+            bitsPerComponent,
+            bytesPerRow,
+            colorSpace,
+            kCGImageAlphaPremultipliedLast);
+
+    CGImageRef newCGImage = NULL;
+
+    if (!context) {
+        NSLog(@"Bitmap context not created");
+    } else {
+
+        CGContextConcatCTM(context, transform);
+
+        switch (orientation) {
+            case UIImageOrientationLeft:
+            case UIImageOrientationLeftMirrored:
+            case UIImageOrientationRight:
+            case UIImageOrientationRightMirrored:
+                CGContextDrawImage(context, CGRectMake(0, 0, height, width), [image CGImage]);
+                break;
+            default:
+                CGContextDrawImage(context, CGRectMake(0, 0, width, height), [image CGImage]);
+                break;
+        }
+
+        newCGImage = CGBitmapContextCreateImage(context);
+    }
+
+    CGColorSpaceRelease(colorSpace);
+    CGContextRelease(context);
+
+    return newCGImage;
+}
+
+
 Dictionary GameServices::dict_from_player(GKPlayer *player) {
     Dictionary dict = Dictionary();
     dict["display_name"] = player.displayName.UTF8String;
-    if (@available(iOS 13.0, *)) {
-        dict["id"] = player.gamePlayerID.UTF8String;
-        dict["is_local_player"] = [player.gamePlayerID isEqualToString: GKLocalPlayer.local.gamePlayerID];
-    } else {
-        dict["id"] = player.gamePlayerID.UTF8String;
-        dict["is_local_player"] = [player.gamePlayerID isEqualToString: GKLocalPlayer.local.gamePlayerID];
-    }
+    dict["id"] = player.gamePlayerID.UTF8String;
+    dict["is_local_player"] = [player.gamePlayerID isEqualToString: GKLocalPlayer.local.gamePlayerID];
     return dict;
 }
 
@@ -475,6 +680,10 @@ void GameServices::_bind_methods() {
     ClassDB::bind_method("request_achievements", &GameServices::request_achievements);
     ClassDB::bind_method("request_achievement_descriptions", &GameServices::request_achievement_descriptions);
     
+    ClassDB::bind_method("get_friends_authorization_status", &GameServices::get_friends_authorization_status);
+    ClassDB::bind_method("load_friends", &GameServices::load_friends);
+    ClassDB::bind_method("fetch_friend_avatar", &GameServices::fetch_friend_avatar);
+    
     // Signals
     
     ADD_SIGNAL(MethodInfo("debug_message", PropertyInfo(Variant::STRING, "message")));
@@ -501,7 +710,7 @@ void GameServices::_bind_methods() {
     
     // award_achievement()
     ADD_SIGNAL(MethodInfo("award_achievement_complete", PropertyInfo(Variant::DICTIONARY, "ret")));
-
+    
     // request_achievement_descriptions()
     ADD_SIGNAL(MethodInfo("request_achievement_descriptions_complete", PropertyInfo(Variant::DICTIONARY, "ret")));
     
@@ -510,4 +719,17 @@ void GameServices::_bind_methods() {
     
     // reset_achievements()
     ADD_SIGNAL(MethodInfo("reset_achievements_complete", PropertyInfo(Variant::DICTIONARY, "ret")));
+    
+    // Getting friend list authorization status
+    ADD_SIGNAL(MethodInfo("get_friends_authorization_status_complete", PropertyInfo(Variant::INT, "authorization_enum")));
+    ADD_SIGNAL(MethodInfo("get_friends_authorization_status_failed", PropertyInfo(Variant::STRING, "error_message")));
+    
+    // Getting friends
+    ADD_SIGNAL(MethodInfo("load_friends_complete", PropertyInfo(Variant::DICTIONARY, "friend_dict")));
+    ADD_SIGNAL(MethodInfo("load_friends_failed", PropertyInfo(Variant::STRING, "error_message")));
+    
+    // Getting friend avatar images
+    ADD_SIGNAL(MethodInfo("fetch_friend_avatar_complete", PropertyInfo(Variant::STRING, "friend_name"), PropertyInfo(Variant::OBJECT, "friend_img")));
+    ADD_SIGNAL(MethodInfo("fetch_friend_avatar_failed", PropertyInfo(Variant::STRING, "error_message")));
+    
 }
