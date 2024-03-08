@@ -12,6 +12,19 @@ var Config = preload("res://addons/gameservices/src/utils/GameServicesConfig.gd"
 
 func _ready():
 	_load_config()
+	
+	'''
+	var names = ["SPORTS", "PLANETS", "BUBBLES", "SportsBalls_Uniform_Normal_Normal_None", "SportsBalls_Uniform_Normal_Normal_Bubbles", "SportsBalls_Uniform_Normal_Launcher_None", "SportsBalls_Uniform_Normal_Launcher_Bubbles", "SportsBalls_Uniform_Low_Normal_None", "SportsBalls_Uniform_Low_Normal_Bubbles", "SportsBalls_Uniform_Low_Launcher_None", "SportsBalls_Uniform_Low_Launcher_Bubbles", "SportsBalls_Individualized_Normal_Normal_None", "SportsBalls_Individualized_Normal_Normal_Bubbles", "SportsBalls_Individualized_Normal_Launcher_None", "SportsBalls_Individualized_Normal_Launcher_Bubbles", "SportsBalls_Individualized_Low_Normal_None", "SportsBalls_Individualized_Low_Normal_Bubbles", "SportsBalls_Individualized_Low_Launcher_None", "SportsBalls_Individualized_Low_Launcher_Bubbles", "PlanetBalls_Uniform_Normal_Normal_None", "PlanetBalls_Uniform_Normal_Normal_Bubbles", "PlanetBalls_Uniform_Normal_Launcher_None", "PlanetBalls_Uniform_Normal_Launcher_Bubbles", "PlanetBalls_Uniform_Low_Normal_None", "PlanetBalls_Uniform_Low_Normal_Bubbles", "PlanetBalls_Uniform_Low_Launcher_None", "PlanetBalls_Uniform_Low_Launcher_Bubbles", "PlanetBalls_Individualized_Normal_Normal_None", "PlanetBalls_Individualized_Normal_Normal_Bubbles", "PlanetBalls_Individualized_Normal_Launcher_None", "PlanetBalls_Individualized_Normal_Launcher_Bubbles", "PlanetBalls_Individualized_Low_Normal_None", "PlanetBalls_Individualized_Low_Normal_Bubbles", "PlanetBalls_Individualized_Low_Launcher_None", "PlanetBalls_Individualized_Low_Launcher_Bubbles", "BubbleBalls_Uniform_Normal_Normal_None", "BubbleBalls_Uniform_Normal_Normal_Bubbles", "BubbleBalls_Uniform_Normal_Launcher_None", "BubbleBalls_Uniform_Normal_Launcher_Bubbles", "BubbleBalls_Uniform_Low_Normal_None", "BubbleBalls_Uniform_Low_Normal_Bubbles", "BubbleBalls_Uniform_Low_Launcher_None", "BubbleBalls_Uniform_Low_Launcher_Bubbles", "BubbleBalls_Individualized_Normal_Normal_None", "BubbleBalls_Individualized_Normal_Normal_Bubbles", "BubbleBalls_Individualized_Normal_Launcher_None", "BubbleBalls_Individualized_Normal_Launcher_Bubbles", "BubbleBalls_Individualized_Low_Normal_None", "BubbleBalls_Individualized_Low_Normal_Bubbles", "BubbleBalls_Individualized_Low_Launcher_None", "BubbleBalls_Individualized_Low_Launcher_Bubbles", "DevBalls_Uniform_Normal_Normal_None", "DevBalls_Uniform_Normal_Normal_Bubbles", "DevBalls_Uniform_Normal_Launcher_None", "DevBalls_Uniform_Normal_Launcher_Bubbles", "DevBalls_Uniform_Low_Normal_None", "DevBalls_Uniform_Low_Normal_Bubbles", "DevBalls_Uniform_Low_Launcher_None", "DevBalls_Uniform_Low_Launcher_Bubbles", "DevBalls_Individualized_Normal_Normal_None", "DevBalls_Individualized_Normal_Normal_Bubbles", "DevBalls_Individualized_Normal_Launcher_None", "DevBalls_Individualized_Normal_Launcher_Bubbles", "DevBalls_Individualized_Low_Normal_None", "DevBalls_Individualized_Low_Normal_Bubbles", "DevBalls_Individualized_Low_Launcher_None", "DevBalls_Individualized_Low_Launcher_Bubbles"]
+	
+	var entries = names.size()
+	if entries == 0:
+		return # no config to setup
+	
+	for i in range(entries):
+		add_row(names[i], names[i], names[i])
+		
+	_save_config()
+	'''
 
 #
 # Loading and saving settings

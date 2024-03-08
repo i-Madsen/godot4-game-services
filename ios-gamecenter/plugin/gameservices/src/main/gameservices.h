@@ -58,6 +58,7 @@
         void show_leaderboard(const String &leaderboard_id, int players, int time);
         void show_all_leaderboards();
 
+        void fetch_top_scores_from_set(const String &set_id, const String &leaderboard_id, int page_size, int players, int time);
         void fetch_top_scores(const String &leaderboard_id, int page_size, int players, int time);
         void fetch_next_scores();
 
@@ -83,7 +84,7 @@
 
     private:
 
-        void fetch_leaderboard(const String &leaderboard_id, const String &error_signal, void (^completion)(GKLeaderboard * leaderboard));
+        void fetch_leaderboard(GKLeaderboardSet *leaderboardSet, const String &leaderboard_id, const String &error_signal, void (^completion)(GKLeaderboard * leaderboard));
         void fetch_scores();
 
         CGImageRef newRGBA8CGImageFromUIImage(UIImage* image);

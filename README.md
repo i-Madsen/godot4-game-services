@@ -1,6 +1,8 @@
 # godot-game-services
 
-[Godot](https://godotengine.org/) native plugins for iOS [Game Center](https://developer.apple.com/game-center/) and Android Google [Play Game Services](https://developers.google.com/games/services) for Godot v3.5.
+Modified to use with Godot v4 (specifically built for 4.2.1 - you may need to rebuild plugin with different headers if using another version) with added Game Center functionality (not being developed with Android in mind yet - may cause errors if not on iOS).
+
+[Godot](https://godotengine.org/) native plugins for iOS [Game Center](https://developer.apple.com/game-center/) and Android Google [Play Game Services](https://developers.google.com/games/services).
 
 This plugin was developed with the intention to provide a single standard interface to game services on mobile, thus simplifying development.
 
@@ -10,11 +12,9 @@ The following features are currently supported:
 
 * Leaderboards
 
-Support for other features is planned for the future. If there is a particular feature you would like to see, please either [open a new issue](https://github.com/sjc/godot-game-services/issues) or comment on one of the existing issues to help us prioritise what we work on:
+* Achievements
 
-* [Achievements](https://github.com/sjc/godot-game-services/issues/1)
-
-* [Friends Lists](https://github.com/sjc/godot-game-services/issues/2)
+* Some Friends List Functionality
 
 These plugins are based on the excellent [AdMob plugin by Poing Studios](https://github.com/Poing-Studios/godot-admob-editor).
 
@@ -78,9 +78,7 @@ android {
 
 ### iOS
 
-* Download the latest version of the iOS plugin from the [releases page](https://github.com/sjc/godot-game-services/releases).
-
-* Unzip the archive and copy the `gameservices` folder into the `ios/plugins` folder in your Godot project.
+* Download and copy the `gameservices` folder into the `ios/plugins` folder in your Godot project.
 
 * In the iOS export settings, ensure that "Game Services" is ticked.
 
@@ -127,9 +125,9 @@ In the `ios-gamecenter` folder:
 
 * Create a `bin` directory.
 
-* Download the `extracted_headers.zip` from the [godot-ios-plugin repo's releases page](https://github.com/godotengine/godot-ios-plugins/releases/tag/3.5-stable), unzip it, and copy the `godot` folder into `ios-gamecenter`.
+* Extract headers from correct engine and place the `godot` folder into `ios-gamecenter`.
 
-* Run `./scripts/release_static_library.sh 3.x` or `./scripts/release_xcframework.sh 3.x` 
+* Run `./scripts/release_static_library.sh 4.x` or `./scripts/release_xcframework.sh 4.x` [I built using the command: `./scripts/release_static_library.sh 4.0`]
 
 The `bin/release/gameservices` folder will contain the generated plugin files and should be copied into the `ios/plugins` folder of the Godot project.
 

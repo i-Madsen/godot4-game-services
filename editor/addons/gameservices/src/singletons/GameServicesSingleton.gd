@@ -35,6 +35,13 @@ signal award_achievement_complete(ret)
 signal request_achievement_descriptions_complete(ret)
 signal request_achievements_complete(ret)
 signal reset_achievements_complete(ret)
+
+signal get_friends_authorization_status_complete(authorization_enum)
+signal get_friends_authorization_status_failed(error_message)
+signal load_friends_complete(friends)
+signal load_friends_failed(error_message)
+signal fetch_friend_avatar_complete(friend_name, friend_img)
+signal fetch_friend_avatar_failed(error_message)
 #
 # vars
 #
@@ -76,6 +83,13 @@ func _connect_signals() -> void:
 	_plugin.request_achievement_descriptions_complete.connect(_on_GameServices_request_achievement_descriptions_complete)
 	_plugin.request_achievements_complete.connect(_on_GameServices_request_achievements_complete)
 	_plugin.reset_achievements_complete.connect(_on_GameServices_reset_achievements_complete)
+	
+	_plugin.get_friends_authorization_status_complete.connect(_on_GameServices_get_friends_authorization_status_complete)
+	_plugin.get_friends_authorization_status_failed.connect(_on_GameServices_get_friends_authorization_status_failed)
+	_plugin.load_friends_complete.connect(_on_GameServices_load_friends_complete)
+	_plugin.load_friends_failed.connect(_on_GameServices_load_friends_failed)
+	_plugin.fetch_friend_avatar_complete.connect(_on_GameServices_fetch_friend_avatar_complete)
+	_plugin.fetch_friend_avatar_failed.connect(_on_GameServices_fetch_friend_avatar_failed)
 
 #
 # Signal callbacks
@@ -181,3 +195,33 @@ func _on_GameServices_request_achievements_complete(ret: Dictionary) -> void:
 
 func _on_GameServices_reset_achievements_complete(ret: Dictionary) -> void:
 	emit_signal("reset_achievements_complete", ret)
+
+
+#
+# Friends
+#
+func _on_GameServices_get_friends_authorization_status_complete(authorization_enum: int) -> void:
+	emit_signal("get_friends_authorization_status_complete", authorization_enum)
+
+func _on_GameServices_get_friends_authorization_status_failed(error_message: String) -> void:
+	emit_signal("get_friends_authorization_status_failed", error_message)
+
+func _on_GameServices_load_friends_complete(friend_dict) -> void:
+	# parse the friend
+	# we can't return arrays from plugins, so the result is a dictionary with index as key
+	var friends = []
+	for i in range(friend_dict.size()):
+		var key = str(i)
+		var friend_obj = friend_dict.get(key, {})
+		if not friend_obj.empty():
+			friends.append(GSPlayer.new(friend_obj))
+	emit_signal("load_friends_complete", friends)
+
+func _on_GameServices_load_friends_failed(error_message: String) -> void:
+	emit_signal("load_friends_failed", error_message)
+
+func _on_GameServices_fetch_friend_avatar_complete(friend_name: String, friend_img: Image) -> void:
+	emit_signal("fetch_friend_avatar_complete", friend_name, friend_img)
+
+func _on_GameServices_fetch_friend_avatar_failed(error_message: String) -> void:
+	emit_signal("fetch_friend_avatar_failed", error_message)

@@ -16,6 +16,9 @@ func initialize() -> void:
 	if _plugin:
 		print("calling _plugin.initialize()")
 		_plugin.initialize()
+	else:
+		print("gameservices _plugin is not loaded in initialize()")
+		GameServicesManager.authenticated_player.emit(false)
 
 
 func can_sign_in() -> bool:
@@ -58,6 +61,10 @@ func show_all_leaderboards() -> void:
 # Leaderboard data
 #
 
+func fetch_top_scores_from_set(set_id: String, leaderboard_id: String, page_size: int = 10, players: int = LeaderboardPlayers.ALL, time: int = LeaderboardTime.ALL_TIME) -> void:
+	if _plugin:
+		_plugin.fetch_top_scores_from_set(set_id, _platform_leaderboard_id(leaderboard_id), page_size, players, time)
+
 func fetch_top_scores(leaderboard_id: String, page_size: int = 10, players: int = LeaderboardPlayers.ALL, time: int = LeaderboardTime.ALL_TIME) -> void:
 	if _plugin:
 		_plugin.fetch_top_scores(_platform_leaderboard_id(leaderboard_id), page_size, players, time)
@@ -98,3 +105,15 @@ func request_achievements() -> void:
 func reset_achievements() -> void:
 	if _plugin:
 		_plugin.reset_achievements()
+
+func get_friends_authorization_status() -> void:
+	if _plugin:
+		_plugin.get_friends_authorization_status()
+
+func load_friends() -> void:
+	if _plugin:
+		_plugin.load_friends()
+
+func fetch_friend_avatar(player_id: String) -> void:
+	if _plugin:
+		_plugin.fetch_friend_avatar(player_id)

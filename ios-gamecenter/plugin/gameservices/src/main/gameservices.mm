@@ -28,6 +28,7 @@ GameServices::GameServices() {
 
     initialized = false;
     
+    // GKLeaderboard is a query object, so calling from the objects should always give up-to-date scores
     all_leaderboards = [[NSMutableDictionary alloc] init];
     current_leaderboard = nil;
     current_leaderboard_page_size = 0;
@@ -103,9 +104,10 @@ void GameServices::sign_in() {
 
 // MARK: Leaderboards
 
+// TODO: Need to add a 'from_set' variant if you want to use this function with leaderboards that are in sets
 void GameServices::show_leaderboard(const String &leaderboard_id, int players, int time)
 {
-    fetch_leaderboard(leaderboard_id, "show_leaderboard_failed", ^(GKLeaderboard *leaderboard) {
+    fetch_leaderboard(nil, leaderboard_id, "show_leaderboard_failed", ^(GKLeaderboard *leaderboard) {
         NSString *leaderboardID = leaderboard.baseLeaderboardID;
         GKGameCenterViewController *viewController = [[GKGameCenterViewController alloc] initWithLeaderboardID:leaderboardID playerScope:players_scope_from_int(players) timeScope:time_scope_from_int(time)];
         viewController.gameCenterDelegate = gameServicesHelper;
@@ -123,9 +125,99 @@ void GameServices::show_all_leaderboards()
     emit_signal("show_leaderboard_complete", "");
 }
 
+void GameServices::fetch_top_scores_from_set(const String &set_id, const String &leaderboard_id, int page_size, int players, int time) {
+    NSString *leaderboardID = [NSString stringWithCString:leaderboard_id.utf8().get_data() encoding:NSUTF8StringEncoding];
+    NSString *errorSignal = @"fetch_scores_failed";
+    //NSLog(@"Fetching leaderboard_id: %@", leaderboardID);
+    void (^completion)(GKLeaderboard *leaderboard) = ^(GKLeaderboard *leaderboard) {
+
+        current_leaderboard = leaderboard;
+        current_leaderboard_page_size = page_size;
+        current_leaderboard_players = players;
+        current_leaderboard_time = time;
+        current_leaderboard_range_start = 1;
+        
+        fetch_scores();
+    };
+    
+    // Have we already fetched the leaderboards?
+    if (all_leaderboards != nil) {
+        if ([all_leaderboards objectForKey:leaderboardID]){
+            //NSLog(@"Found in all_leaderboards...");
+            completion([all_leaderboards objectForKey:leaderboardID]);
+            
+            return;
+        }
+    }
+    
+    
+    NSString *setID = [NSString stringWithCString:set_id.utf8().get_data() encoding:NSUTF8StringEncoding];
+    //NSLog(@"(Not found in all_leaderboards) Fetching from set_id: %@", setID);
+    
+    // Get the leaderboard set
+    [GKLeaderboardSet loadLeaderboardSetsWithCompletionHandler:^(NSArray *leaderboardSets, NSError *error) {
+        //NSLog(@"In loadLeaderboardSetsWithCompletionHandler...");
+        if (error) {
+            emit_signal(errorSignal.UTF8String, leaderboardID.UTF8String, error.localizedDescription.UTF8String);
+            return;
+        }
+        
+        GKLeaderboardSet *theLeaderboardSet = nil;
+        
+        for (GKLeaderboardSet *leaderboardSet in leaderboardSets) {
+            if ([leaderboardSet.identifier isEqualToString:setID]) {
+                //NSLog(@"found matching leaderboard set!");
+                theLeaderboardSet = leaderboardSet;
+                break;
+            }
+        }
+        
+        if (theLeaderboardSet == nil) {
+            emit_signal(errorSignal.UTF8String, leaderboardID.UTF8String, "leaderboard not found");
+            return;
+        }
+        
+        // Get all leaderboards in this set
+        [theLeaderboardSet loadLeaderboardsWithHandler:^(NSArray *leaderboards, NSError *error) {
+            //NSLog(@"In loadLeaderboardsWithHandler for the set...");
+            if (error) {
+                emit_signal(errorSignal.UTF8String, leaderboardID.UTF8String, error.localizedDescription.UTF8String);
+                return;
+            }
+            
+            //NSLog(@"leaderboards: %@", leaderboards);
+
+            if (leaderboards == nil || leaderboards.count == 0) {
+                emit_signal(errorSignal.UTF8String, leaderboardID.UTF8String, "leaderboard not found");
+                return;
+            }
+            
+            
+            
+            GKLeaderboard *theLeaderboard = nil;
+            
+            for (GKLeaderboard *leaderboard in leaderboards) {
+                if ([leaderboard.baseLeaderboardID isEqualToString:leaderboardID]) {
+                    //NSLog(@"found matching leaderboard");
+                    theLeaderboard = leaderboard;
+                }
+                // If we're at this point, that means we haven't stored the GKLeaderboard objects yet for this set, so go ahead and save them all
+                [all_leaderboards setValue:leaderboard forKey:leaderboard.baseLeaderboardID];
+            }
+            
+            if (theLeaderboard == nil) {
+                emit_signal(errorSignal.UTF8String, leaderboardID.UTF8String, "leaderboard not found");
+                return;
+            }
+            //NSLog(@"Calling completion from end...");
+            completion(theLeaderboard);
+        }];
+    }];
+}
+
 void GameServices::fetch_top_scores(const String &leaderboard_id, int page_size, int players, int time) {
     
-    fetch_leaderboard(leaderboard_id, "fetch_scores_failed", ^(GKLeaderboard *leaderboard) {
+    fetch_leaderboard(nil, leaderboard_id, "fetch_scores_failed", ^(GKLeaderboard *leaderboard) {
 
         current_leaderboard = leaderboard;
         current_leaderboard_page_size = page_size;
@@ -152,7 +244,8 @@ void GameServices::submit_score(const String &leaderboard_id, int score) {
     // For below, because String isn't being captured in blocks
     NSString *leaderboardID = [NSString stringWithCString:leaderboard_id.utf8().get_data() encoding:NSUTF8StringEncoding];
 
-    fetch_leaderboard(leaderboard_id, "submit_score_failed", ^(GKLeaderboard *leaderboard) {
+    // Should only be submitting scores to leaderboards we've already saved
+    fetch_leaderboard(nil, leaderboard_id, "submit_score_failed", ^(GKLeaderboard *leaderboard) {
         [leaderboard submitScore:score context:0 player:[GKLocalPlayer local] completionHandler:^(NSError * _Nullable error) {
             if (error) {
                 emit_signal("submit_score_failed", leaderboardID.UTF8String, error.localizedDescription.UTF8String);
@@ -165,30 +258,18 @@ void GameServices::submit_score(const String &leaderboard_id, int score) {
 
 // MARK: Leaderboard helpers
 
-void GameServices::fetch_leaderboard(const String &leaderboard_id, const String &error_signal, void (^completion)(GKLeaderboard *leaderboard)) {
+void GameServices::fetch_leaderboard(GKLeaderboardSet *leaderboardSet, const String &leaderboard_id, const String &error_signal, void (^completion)(GKLeaderboard *leaderboard)) {
     
     NSString *leaderboardID = [NSString stringWithCString:leaderboard_id.utf8().get_data() encoding:NSUTF8StringEncoding];
     NSString *errorSignal = [NSString stringWithCString:error_signal.utf8().get_data() encoding:NSUTF8StringEncoding];
     
     // Have we already fetched the leaderboards?
-    /*if (all_leaderboards != nil) {
-        GKLeaderboard *theLeaderboard = nil;
-        for (GKLeaderboard *leaderboard in all_leaderboards) {
-            if ([leaderboard.baseLeaderboardID isEqualToString:leaderboardID]) {
-                //NSLog(@"found matching leaderboard");
-                theLeaderboard = leaderboard;
-                break;
-            }
+    if (all_leaderboards != nil) {
+        if ([all_leaderboards objectForKey:leaderboardID]){
+            completion([all_leaderboards objectForKey:leaderboardID]);
+            return;
         }
-        
-        if (theLeaderboard) {
-            completion(theLeaderboard);
-        } else {
-            emit_signal(errorSignal.UTF8String, leaderboardID.UTF8String, "leaderboard not found");
-        }
-        
-        return;
-    }*/
+    }
     
     NSArray<NSString *> *leaderboardIDs =  [NSArray arrayWithObject:leaderboardID];
     
@@ -438,17 +519,17 @@ void GameServices::fetch_friend_avatar(const String &player_id) {
     
     if ([playerID isEqualToString: GKLocalPlayer.local.gamePlayerID]) {
         player = GKLocalPlayer.local;
-        NSLog(@"Fetching local player avatar...");
+        //NSLog(@"Fetching local player avatar...");
     }
     else {
         if (all_friends[playerID])
         {
             player = all_friends[playerID];
-            NSLog(@"Fetching friend avatar...");
+            //NSLog(@"Fetching friend avatar...");
         }
         else
         {
-            NSLog(@"Did not find friend id.");
+            //NSLog(@"Did not find friend id.");
             emit_signal("fetch_friend_avatar_failed", "Did not find friend with id: " + player_id);
             return;
         }
@@ -457,18 +538,18 @@ void GameServices::fetch_friend_avatar(const String &player_id) {
     // Get player's avatar photo
     [player loadPhotoForSize:(GKPhotoSizeNormal) withCompletionHandler:^(UIImage * _Nullable photo, NSError * _Nullable error) {
         if (photo) {
-            NSLog(@"Got photo...");
+            //NSLog(@"Got photo...");
             CGImageRef cgImage = newRGBA8CGImageFromUIImage(photo);
             
             if (cgImage) {
-                NSLog(@"Converted to CGImageRef...");
+                //NSLog(@"Converted to CGImageRef...");
                 CGDataProviderRef provider = CGImageGetDataProvider(cgImage);
                 CFDataRef bmp = CGDataProviderCopyData(provider);
                 const unsigned char *data = CFDataGetBytePtr(bmp);
                 CFIndex length = CFDataGetLength(bmp);
                 
                 if (data) {
-                    NSLog(@"Converted into data...");
+                    //NSLog(@"Converted into data...");
                     Ref<Image> img;
                 #if VERSION_MAJOR == 4
                     Vector<uint8_t> img_data;
@@ -487,13 +568,14 @@ void GameServices::fetch_friend_avatar(const String &player_id) {
                     img.instance();
                     img->create(image.size.width * image.scale, image.size.height * image.scale, 0, Image::FORMAT_RGBA8, img_data);
                 #endif
-                    NSLog(@"Emitting fetch_friend_avatar_complete...");
+                    //NSLog(@"Emitting fetch_friend_avatar_complete...");
                     // Sending back the player's display name instead of id since the friend ids were not consistent with the ones sent back from leaderboards
                     // This may vary from app to app, but display name *should* always work here regardless
                     emit_signal("fetch_friend_avatar_complete", player.displayName.UTF8String, img);
                 }
                 else {
-                    NSLog(@"Conversion into data failed...");
+                    //NSLog(@"Conversion into data failed...");
+                    emit_signal("fetch_friend_avatar_failed", @"Conversion into data failed...");
                 }
                 
                 CFRelease(bmp);
@@ -501,10 +583,11 @@ void GameServices::fetch_friend_avatar(const String &player_id) {
             }
             else
             {
-                NSLog(@"Conversion to CGImageRef was nil...");
+                //NSLog(@"Conversion to CGImageRef was nil...");
+                emit_signal("fetch_friend_avatar_failed", @"Conversion to CGImageRef was nil...");
             }
         } else {
-            NSLog(@"Photo returned nil...");
+            //NSLog(@"Photo returned nil...");
             emit_signal("fetch_friend_avatar_failed", error.localizedDescription.UTF8String);
         }
     }];
@@ -670,6 +753,7 @@ void GameServices::_bind_methods() {
     ClassDB::bind_method("show_leaderboard", &GameServices::show_leaderboard);
     ClassDB::bind_method("show_all_leaderboards", &GameServices::show_all_leaderboards);
     
+    ClassDB::bind_method("fetch_top_scores_from_set", &GameServices::fetch_top_scores_from_set);
     ClassDB::bind_method("fetch_top_scores", &GameServices::fetch_top_scores);
     ClassDB::bind_method("fetch_next_scores", &GameServices::fetch_next_scores);
     
