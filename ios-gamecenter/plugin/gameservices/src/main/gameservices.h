@@ -58,8 +58,8 @@
         void show_leaderboard(const String &leaderboard_id, int players, int time);
         void show_all_leaderboards();
 
-        void fetch_top_scores_from_set(const String &set_id, const String &leaderboard_id, int page_size, int players, int time);
-        void fetch_top_scores(const String &leaderboard_id, int page_size, int players, int time);
+        void fetch_top_scores_from_set(const String &set_id, const String &leaderboard_id, int page_size, int players, int time, int range_start = 1);
+        void fetch_top_scores(const String &leaderboard_id, int page_size, int players, int time, int range_start = 1);
         void fetch_next_scores();
 
         void submit_score(const String &leaderboard_id, int score);

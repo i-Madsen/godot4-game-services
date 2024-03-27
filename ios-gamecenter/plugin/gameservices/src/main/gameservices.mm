@@ -125,7 +125,7 @@ void GameServices::show_all_leaderboards()
     emit_signal("show_leaderboard_complete", "");
 }
 
-void GameServices::fetch_top_scores_from_set(const String &set_id, const String &leaderboard_id, int page_size, int players, int time) {
+void GameServices::fetch_top_scores_from_set(const String &set_id, const String &leaderboard_id, int page_size, int players, int time, int range_start) {
     NSString *leaderboardID = [NSString stringWithCString:leaderboard_id.utf8().get_data() encoding:NSUTF8StringEncoding];
     NSString *errorSignal = @"fetch_scores_failed";
     //NSLog(@"Fetching leaderboard_id: %@", leaderboardID);
@@ -135,7 +135,7 @@ void GameServices::fetch_top_scores_from_set(const String &set_id, const String 
         current_leaderboard_page_size = page_size;
         current_leaderboard_players = players;
         current_leaderboard_time = time;
-        current_leaderboard_range_start = 1;
+        current_leaderboard_range_start = range_start;
         
         fetch_scores();
     };
@@ -215,7 +215,7 @@ void GameServices::fetch_top_scores_from_set(const String &set_id, const String 
     }];
 }
 
-void GameServices::fetch_top_scores(const String &leaderboard_id, int page_size, int players, int time) {
+void GameServices::fetch_top_scores(const String &leaderboard_id, int page_size, int players, int time, int range_start) {
     
     fetch_leaderboard(nil, leaderboard_id, "fetch_scores_failed", ^(GKLeaderboard *leaderboard) {
 
@@ -223,7 +223,7 @@ void GameServices::fetch_top_scores(const String &leaderboard_id, int page_size,
         current_leaderboard_page_size = page_size;
         current_leaderboard_players = players;
         current_leaderboard_time = time;
-        current_leaderboard_range_start = 1;
+        current_leaderboard_range_start = range_start;
         
         fetch_scores();
     });
